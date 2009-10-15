@@ -9,10 +9,7 @@ Test implementation of exponential function.
 #include <mpfr.h>
 #include <sys/time.h>
 
-// XXX -- really want a fixmul macro/function
-#define SHIFT(x,prec) mpz_tdiv_q_2exp(x,x,prec)
-
-#define MAX_SERIES_STEPS 8
+#define MAX_SERIES_STEPS 10
 
 mpz_t _exp_x;
 mpz_t _exp_t;
@@ -24,8 +21,6 @@ mpz_t _exp_x2;
 
 mpz_t _exp_pows[MAX_SERIES_STEPS];
 mpz_t _exp_sums[MAX_SERIES_STEPS];
-
-void fix_read_coeff_array(FILE *fp, mpz_t *coeffs, int *count);
 
 double timing()
 {
@@ -73,12 +68,17 @@ void fix_clear_data()
 
 void mpz_fixed_one(mpz_t x, int prec)
 {
-    mpz_set_ui(x, 1);
-    mpz_mul_2exp(x, x, prec);
+    //mpz_set_ui(x, 1);
+    //mpz_mul_2exp(x, x, prec);
+    mpz_set_ui(x, 0);
+    mpz_setbit(x, prec);
 }
 
 /*
-First version -- uses Taylor series for exp(x) directly, with two steps.
+First version -- uses Taylor series for exp(x) directly,
+broken into two pieces
+
+Note: this version is currently not used in the benchmark below
 */
 void fix_exp(mpz_t z, mpz_t x, int prec)
 {
@@ -92,7 +92,7 @@ void fix_exp(mpz_t z, mpz_t x, int prec)
     mpz_mul_2exp(_exp_s0, _exp_s0, prec);
     mpz_set(_exp_s1, _exp_s0);
     mpz_mul(_exp_x2, _exp_x, _exp_x);
-    SHIFT(_exp_x2,prec);
+    mpz_tdiv_q_2exp(_exp_x2,_exp_x2,prec);
     mpz_set(_exp_a, _exp_x2);
     k = 2;
     while(1)
@@ -108,17 +108,17 @@ void fix_exp(mpz_t z, mpz_t x, int prec)
         mpz_add(_exp_s1, _exp_s1, _exp_a);
         k += 1;
         mpz_mul(_exp_a, _exp_a, _exp_x2);
-        SHIFT(_exp_a,prec);
+        mpz_tdiv_q_2exp(_exp_a,_exp_a,prec);
         if (mpz_sgn(_exp_a) == 0)
             break;
     }
     mpz_mul(_exp_s1, _exp_s1, _exp_x);
-    SHIFT(_exp_s1, prec);
+    mpz_tdiv_q_2exp(_exp_s1,_exp_s1,prec);
     mpz_add(_exp_s0, _exp_s0, _exp_s1);
     for(k=0; k<r; k++)
     {
         mpz_mul(_exp_s0, _exp_s0, _exp_s0);
-        SHIFT(_exp_s0, prec);
+        mpz_tdiv_q_2exp(_exp_s0,_exp_s0,prec);
     }
     //mpz_tdiv_q_ui(z, _exp_s0, 20);
     mpz_set(z, _exp_s0);
@@ -285,14 +285,14 @@ void benchmark_optimize_exp()
 
     printf(" prec   acc   J   r     mpfr     this   faster\n");
 
-    for (prec=53; prec<4000; prec+=prec/4)
+    for (prec=53; prec<30000; prec+=prec/4)
     {
         if (prec < 300)
-            REPS = 50;
+            REPS = 100;
         else if (prec < 600)
-            REPS = 20;
+            REPS = 50;
         else if (prec < 1200)
-            REPS = 5;
+            REPS = 10;
         else
             REPS = 2;
 
@@ -310,8 +310,8 @@ void benchmark_optimize_exp()
         mpfr_set_d(mx, 0.37, GMP_RNDN);
         //mpfr_div_ui(mx, mx, 3, GMP_RNDN);
 
-        mpfr_time = 100000.0;
-        for (k=0; k<3; k++)
+        mpfr_time = 1e100;
+        for (i=0; i<10; i++)
         {
             t1 = timing();
             for (k=0; k<REPS; k++)
@@ -324,22 +324,26 @@ void benchmark_optimize_exp()
                 mpfr_time = elapsed;
         }
 
-        for (J=0; J<MAX_SERIES_STEPS; J++)
+        for (J=1; J<MAX_SERIES_STEPS; J++)
         {
-            for (r=0; r<prec/2; r++)
+            for (r=0; r*r<prec+30; r++)
             {
-                t1 = timing();
-                for (k=0; k<REPS; k++)
+                for (i=0; i<3; i++)
                 {
-                    exp_series(y, dummy, x, prec, r, J, 2);
-                }
-                t2 = timing();
-                elapsed = (t2-t1) / REPS;
-                if (elapsed < best_time)
-                {
-                    best_time = elapsed;
-                    best_r = r;
-                    best_J = J;
+                    t1 = timing();
+                    for (k=0; k<REPS; k++)
+                    {
+                        exp_series(y, dummy, x, prec, r, J, 2);
+                    }
+                    t2 = timing();
+                    elapsed = (t2-t1) / REPS;
+
+                    if (elapsed < best_time)
+                    {
+                        best_time = elapsed;
+                        best_r = r;
+                        best_J = J;
+                    }
                 }
 
                 mpfr_set_z(mx, y, GMP_RNDN);
