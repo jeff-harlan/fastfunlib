@@ -296,9 +296,12 @@ void benchmark_optimize_exp()
         else
             REPS = 2;
 
-        mpz_set_str(x, "3332663724254167", 10);
-        mpz_mul_2exp(x, x, prec-53);
+        //mpz_set_str(x, "3332663724254167", 10);
+        //mpz_mul_2exp(x, x, prec-53);
         //mpz_div_ui(x, x, 3);
+        mpz_set_ui(x, 37);
+        mpz_mul_2exp(x, x, prec);
+        mpz_div_ui(x, x, 10);
 
         min_accuracy = prec;
         best_time = 1e100;
@@ -307,7 +310,8 @@ void benchmark_optimize_exp()
 
         mpfr_set_prec(mx, prec);
         mpfr_set_prec(my, prec);
-        mpfr_set_d(mx, 0.37, GMP_RNDN);
+        mpfr_set_str(mx, "0.37", 10, GMP_RNDN);
+        //mpfr_set_d(mx, 0.37, GMP_RNDN);
         //mpfr_div_ui(mx, mx, 3, GMP_RNDN);
 
         mpfr_time = 1e100;
