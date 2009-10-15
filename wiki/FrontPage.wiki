@@ -4,35 +4,44 @@ A C library for fast multiprecision evaluation of transcendental functions, usin
 
 The current target is to test various algorithms, mainly for elementary functions. There is no code with a usable library interface yet. The svn trunk contains a test implementation of exp (the same code may also compute cos or sin).
 
-The test program computes exp(0.37) and compares both accuracy and speed to MPFR-2.4.1. Up to a precision of at least 3500 bits (1000 digits), this implementation is uniformly at least 3x faster than MPFR on one AMD64 system. Accuracy is within 1 bit of the correctly rounded value (as computed by MPFR). Times (5th and 6th columns) are in nanoseconds.
+The test program computes exp(0.37) and compares both accuracy and speed to MPFR-2.4.1. This implementation is uniformly faster than MPFR up to at least several hundred bits of precision on one AMD64 system. Accuracy is within 1-2 bits of the correctly rounded value (as computed by MPFR). Times (5th and 6th columns) are in nanoseconds.
 
 {{{
 fredrik@airy:~/src/fastfunlib/fastfunlib/exptest$ ./exptest
  prec   acc   J   r     mpfr     this   faster
-   53    52   0   8     7460     1400   5.329
-   66    66   0   6    14840     1480   10.027
-   82    82   0   8     5900     1620   3.642
-  102   102   1   7     6140     1700   3.612
-  127   127   1   6     8140     2400   3.392
-  158   158   2   7    10120     2620   3.863
-  197   197   1   7     9660     3080   3.136
-  246   246   3   6    12080     3900   3.097
-  307   306   2   7    15300     4650   3.290
-  383   382   2  12    17500     5450   3.211
-  478   477   3   9    21300     6750   3.156
-  597   597   3   9    25000     8400   2.976
-  746   745   2  12    48400    11000   4.400
-  932   932   3   8    55600    14400   3.861
- 1165  1165   3  12    71000    19200   3.698
- 1456  1456   3  13   157000    27500   5.709
- 1820  1819   3  12   203500    39500   5.152
- 2275  2275   4  11   251500    57000   4.412
- 2843  2842   4  19   326000    84000   3.881
- 3553  3553   5  14   430500   124500   3.458
+   53    52   1   2     5070     1240   4.089
+   66    65   1   6     5200     1390   3.741
+   82    81   1   8     5590     1460   3.829
+  102   101   1   6     5810     1670   3.479
+  127   126   2   8     7170     2280   3.145
+  158   157   2   7     8390     2500   3.356
+  197   196   1  11     8610     3030   2.842
+  246   246   1   7     9870     3900   2.531
+  307   307   2  12    12260     4440   2.761
+  383   381   3   9    12860     5220   2.464
+  478   477   2  11    16260     6580   2.471
+  597   596   2  14    19220     8039   2.391
+  746   746   3  13    23400    10500   2.229
+  932   931   3   8    27900    14100   1.979
+ 1165  1164   3  14    35400    18700   1.893
+ 1456  1455   3  14    48500    27000   1.796
+ 1820  1819   3  12    67000    38000   1.763
+ 2275  2274   4  11    93000    56500   1.646
+ 2843  2842   4  17   130500    84000   1.554
+ 3553  3553   5  14   190500   124000   1.536
+ 4441  4440   6  14   278000   187000   1.487
+ 5551  5550   6  17   400500   279500   1.433
+ 6938  6937   6  19   599000   429500   1.395
+ 8672  8670   7  18   891000   645000   1.381
+10840 10839   7  25  1310000   973000   1.346
+13550 13549   8  23  2024500  1472000   1.375
+16937 16935   9  25  3121000  2299000   1.358
+21171 21170   9  27  4647000  3446000   1.349
+26463 26461   9  36  5335000  5209500   1.024
 }}}
 
 The J and r parameters are algorithmic tuning parameters. The test program performs an exhaustive search and reports the best combination. Eventually a program for pre-tuning will have to be written.
 
-This is still a naive implementation and optimistically the speed could be improved by perhaps an additional factor two.
+This is still a naive implementation and optimistically the speed at low precision could be improved by perhaps an additional factor two.
 
 Initially exp, cosh/sinh, cos/sin, atan, zeta constants/Bernoulli numbers, gamma and digamma functions should be added; more functions may be added later on.
