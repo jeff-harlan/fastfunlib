@@ -77,7 +77,7 @@ fredrik@airy:~/src/fastfunlib/fastfunlib/logtest$ ./logtest
  5551  5551   7  12   350500   409000   0.857
 }}}
 
-Logarithm using a 512KB (2^10 values x 4096 bits) precomputed lookup table buys another 2x speedup at low precision:
+Logarithm using a 256KB (2^9 values x 4096 bits) precomputed lookup table buys another 2x speedup at low precision:
 
 {{{
 fredrik@airy:~/src/fastfunlib/fastfunlib/logtest2$ ./logtest2
