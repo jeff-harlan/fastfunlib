@@ -17,6 +17,12 @@ mpz_t _log_x2;
 mpz_t _log_pows[MAX_SERIES_STEPS];
 mpz_t _log_sums[MAX_SERIES_STEPS];
 
+#define LOG_LUT_STEP 9
+#define LOG_LUT_SIZE (1<<(LOG_LUT_STEP+1))
+#define LOG_LUT_PREC 4096
+
+mpz_t _log_lut[LOG_LUT_SIZE];
+
 double timing()
 {
     double v;
@@ -42,6 +48,10 @@ void fix_init_data()
         mpz_init(_log_pows[i]);
         mpz_init(_log_sums[i]);
     }
+    for (i=0; i<LOG_LUT_SIZE; i++)
+    {
+        mpz_init(_log_lut[i]);
+    }
 }
 
 void fix_clear_data()
@@ -59,6 +69,10 @@ void fix_clear_data()
         mpz_clear(_log_pows[i]);
         mpz_clear(_log_sums[i]);
     }
+    for (i=0; i<LOG_LUT_SIZE; i++)
+    {
+        mpz_clear(_log_lut[i]);
+    }
 }
 
 void mpz_fixed_one(mpz_t x, int prec)
@@ -69,14 +83,50 @@ void mpz_fixed_one(mpz_t x, int prec)
     mpz_setbit(x, prec);
 }
 
-void log_series(mpz_t y, mpz_t x, int prec, int r, int J)
+void printx(char *s, mpz_t x, int prec)
+{
+    mpfr_t y;
+    mpfr_init2(y, 53);
+    mpfr_set_z(y, x, GMP_RNDN);
+    mpfr_div_2ui(y, y, prec, GMP_RNDN);
+    mpfr_printf("%s: %Rf\n", s, y);
+    mpfr_clear(y);
+}
+
+void log_series(mpz_t y, mpz_t x, int prec, int r, int J, int _use_lut)
 {
     int i, k, wp;
+    int lut_index;
 
     wp = prec + r + 10;
 
     mpz_fixed_one(_log_one, wp);
     mpz_mul_2exp(_log_x, x, wp-prec);
+
+    _use_lut = _use_lut && (wp <= LOG_LUT_PREC);
+
+    // XXX: cleanup the following
+    if (_use_lut)
+    {
+        // write x = t + k/2^n, log(k/2^n) cached,
+        // so that log(x) = log(k/2^n) + log(1 + (x-t)/t)
+        mpz_tdiv_q_2exp(_log_t, _log_x, wp-LOG_LUT_STEP);
+        lut_index = mpz_get_ui(_log_t);
+        if (lut_index != 0 && mpz_sgn(_log_lut[lut_index]) == 0)
+        {
+            // Note: need to restore overwritten variables
+            mpz_set_ui(_log_t, lut_index);
+            mpz_mul_2exp(_log_t, _log_t, LOG_LUT_PREC - LOG_LUT_STEP);
+            log_series(_log_lut[lut_index], _log_t, LOG_LUT_PREC, 8, 8, 0);
+            mpz_fixed_one(_log_one, wp);
+            mpz_mul_2exp(_log_x, x, wp-prec);
+        }
+
+        // t = k/2^n
+        // 1+(x-t)/t = = 1 + (x-t)*(2^n/k) = x*2^n/k
+        mpz_mul_2exp(_log_x, _log_x, LOG_LUT_STEP);
+        mpz_tdiv_q_ui(_log_x, _log_x, lut_index);
+    }
 
     for (i=0; i<r; i++)
     {
@@ -84,7 +134,6 @@ void log_series(mpz_t y, mpz_t x, int prec, int r, int J)
         mpz_sqrt(_log_x, _log_x);
     }
 
-    // x = (x-1)/(x+1)
     mpz_add(_log_t, _log_x, _log_one);
     mpz_sub(_log_x, _log_x, _log_one);
     mpz_mul_2exp(_log_x, _log_x, wp);
@@ -112,14 +161,12 @@ void log_series(mpz_t y, mpz_t x, int prec, int r, int J)
         mpz_set_ui(_log_sums[i], 0);
     }
 
-    // Set a = x, _log_x = x^2
     if (J == 1)
     {
         mpz_set(_log_a, _log_x);
         mpz_mul(_log_x, _log_x, _log_x);
         mpz_tdiv_q_2exp(_log_x, _log_x, wp);
     }
-    // Set a = x, _log_x = x^(2*J)
     else
     {
         mpz_set(_log_a, _log_x);
@@ -153,7 +200,17 @@ void log_series(mpz_t y, mpz_t x, int prec, int r, int J)
         mpz_add(y, y, _log_sums[i]);
     }
 
-    mpz_tdiv_q_2exp(y, y, wp-prec-r-1);
+    if (_use_lut)
+    {
+        mpz_mul_2exp(y, y, r+1);
+        mpz_tdiv_q_2exp(_log_t, _log_lut[lut_index], LOG_LUT_PREC-wp);
+        mpz_add(y, y, _log_t);
+        mpz_tdiv_q_2exp(y, y, wp-prec);
+    }
+    else
+    {
+        mpz_tdiv_q_2exp(y, y, wp-prec-r-1);
+    }
 }
 
 void benchmark_optimize_log()
@@ -218,14 +275,14 @@ void benchmark_optimize_log()
 
         for (J=1; J<MAX_SERIES_STEPS; J++)
         {
-            for (r=1; r*r<prec+30; r++)
+            for (r=0; r*r<prec+30; r++)
             {
                 for (i=0; i<3; i++)
                 {
                     t1 = timing();
                     for (k=0; k<REPS; k++)
                     {
-                        log_series(y, x, prec, r, J);
+                        log_series(y, x, prec, r, J, 1);
                     }
                     t2 = timing();
                     elapsed = (t2-t1) / REPS;
