@@ -2,7 +2,9 @@ A C library for fast multiprecision evaluation of transcendental functions, usin
 
 =Current status=
 
-The current target is to test various algorithms, mainly for elementary functions. There is no code with a usable library interface yet. The svn trunk contains a test implementation of exp (the same code may also compute cos or sin).
+The current target is to test various algorithms, mainly for elementary functions. There is no code with a usable library interface yet. The svn trunk contains a test implementation of exp (the same code may also compute cos or sin), and two test implementations for log.
+
+==Exp==
 
 The test program computes exp(0.37) and compares both accuracy and speed to MPFR-2.4.1. This implementation is uniformly faster than MPFR up to at least several hundred bits of precision on one AMD64 system. Accuracy is within 1-2 bits of the correctly rounded value (as computed by MPFR). Times (5th and 6th columns) are in nanoseconds.
 
@@ -44,4 +46,66 @@ The J and r parameters are algorithmic tuning parameters. The test program perfo
 
 This is still a naive implementation and optimistically the speed at low precision could be improved by perhaps an additional factor two.
 
-Initially exp, cosh/sinh, cos/sin, atan, zeta constants/Bernoulli numbers, gamma and digamma functions should be added; more functions may be added later on.
+==Log==
+
+Logarithm using Taylor series and argument reduction is twice as fast as MPFR up to a few hundred bits:
+
+{{{
+fredrik@airy:~/src/fastfunlib/fastfunlib/logtest$ ./logtest
+ prec   acc   J   r     mpfr     this   faster
+   53    53   1   1     4760     1750   2.720
+   66    66   2   1     4800     1960   2.449
+   82    82   1   3     5370     2390   2.247
+  102   102   2   3     6630     2560   2.590
+  127   127   3   2     8150     3310   2.462
+  158   158   2   2     8160     3960   2.061
+  197   197   2   2     9530     4760   2.002
+  246   246   4   2    13430     6150   2.184
+  307   307   4   2    15180     7300   2.079
+  383   383   4   3    18120     9180   1.974
+  478   478   4   3    23040    11340   2.032
+  597   597   5   3    27760    14820   1.873
+  746   746   6   4    30900    18900   1.635
+  932   932   5   4    39800    25100   1.586
+ 1165  1165   5   5    49400    34600   1.428
+ 1456  1456   5   5    59500    46000   1.293
+ 1820  1820   5   7    79500    65000   1.223
+ 2275  2275   6   7   108000    92000   1.174
+ 2843  2843   7   9   133000   131500   1.011
+ 3553  3552   6  11   189500   188000   1.008
+ 4441  4441   7  11   253500   278500   0.910
+ 5551  5551   7  12   350500   409000   0.857
+}}}
+
+Logarithm using a 512KB (2^10 values x 4096 bits) precomputed lookup table buys another 2x speedup at low precision:
+
+{{{
+fredrik@airy:~/src/fastfunlib/fastfunlib/logtest2$ ./logtest2
+ prec   acc   J   r     mpfr     this   faster
+   53    53   1   0     4710      900   5.233
+   66    66   1   0     4770      930   5.129
+   82    82   1   0     5700     1040   5.481
+  102   102   1   0     6660     1200   5.550
+  127   127   1   0     7800     1430   5.455
+  158   158   2   0     8660     1750   4.949
+  197   197   1   0     9280     2170   4.276
+  246   246   2   0    13480     2670   5.049
+  307   307   2   0    15020     3120   4.814
+  383   383   3   0    18100     4080   4.436
+  478   478   3   0    23640     5120   4.617
+  597   597   3   0    28620     6880   4.160
+  746   746   4   0    31000     9400   3.298
+  932   932   4   0    39800    12200   3.262
+ 1165  1165   4   0    50200    17600   2.852
+ 1456  1456   4   0    59000    25500   2.314
+ 1820  1820   4   0    80000    38500   2.078
+ 2275  2275   6   0   109000    56500   1.929
+ 2843  2843   6   0   134500    87500   1.537
+ 3553  3553   6   0   191000   133000   1.436
+ 4441  4441   7  11   254500   278500   0.914
+ 5551  5550   7  12   352000   410500   0.857
+}}}
+
+==Other functions==
+
+Initially exp, cosh/sinh, cos/sin, log, atan, zeta constants/Bernoulli numbers, gamma and digamma functions should be added; more functions may be added later on.
