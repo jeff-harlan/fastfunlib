@@ -2,7 +2,7 @@ A C library for fast multiprecision evaluation of transcendental functions, usin
 
 =Current status=
 
-The current target is to test various algorithms, mainly for elementary functions. There is no code with a usable library interface yet. The svn trunk contains a test implementation of exp (the same code may also compute cos or sin), and two test implementations for log.
+The current target is to test various algorithms, mainly for elementary functions. There is no code with a usable library interface yet. The svn trunk contains test implementations for exp (the same code may also compute cos or sin), log, and gamma.
 
 ==Exp==
 
@@ -105,6 +105,47 @@ fredrik@airy:~/src/fastfunlib/fastfunlib/logtest2$ ./logtest2
  4441  4441   7  11   254500   278500   0.914
  5551  5550   7  12   352000   410500   0.857
 }}}
+
+==Gamma function==
+
+The gammatest program implements the gamma function using Taylor series, designed for small arguments, e.g. x < 100 (for very large x, a second implementation based on Stirling's series should be used). This approach pays off greatly, giving 20-100x speedups over MPFR.
+
+Times are for computing gamma(5.7) (Columns: prec, accurate, MPFR time, this time, speedup.)
+
+{{{
+fredrik@airy:~/src/fastfunlib/fastfunlib/gammatest$ ./gammatest
+   53    53      76350       3150   24.238
+   66    66      83210       3530   23.572
+   82    82      90030       3770   23.881
+  102   102     108540       4220   25.720
+  127   127     121530       5850   20.774
+  158   158     140270       6920   20.270
+  197   197     174500       9090   19.197
+  246   246     238250      12100   19.690
+  307   307     309100      15800   19.563
+  383   383     409400      19720   20.761
+  478   478     604360      25260   23.926
+  597   597     847160      33280   25.456
+  746   746    1292500      48000   26.927
+  932   932    1872700      66200   28.289
+ 1165  1165    3168700     111200   28.496
+ 1456  1456    5332000     171000   31.181
+ 1820  1820    9475000     288000   32.899
+ 2275  2275   16993000     474000   35.850
+ 2843  2843   30980500     809000   38.295
+ 3553  3553   56078000    1362000   41.173
+ 4441  4441  109397000    2362500   46.306
+ 5551  5551  219725000    3975500   55.270
+ 6938  6938  416183500    6976500   59.655
+ 8672  8672  835161500   11983500   69.693
+10840 10840 1652142000   20552500   80.386
+13550 13550 3450440500   34704000   99.425
+}}}
+
+
+Generating the coefficients for 1000-digit precision from scratch should take about a second (a small fraction of a second for lower precisions). Currently, the test code must read pre-generated coefficients from a file. The svn repository includes a data file generated with mpmath that works up to about 15000 bits. 
+
+There should be an interface for loading and saving coefficient data to files between sessions. The fastfunlib project could also provide a downloadable repository of expensive data, so that not every user who needs many extremely high-precision function evaluations has to generate the same data from scratch (which could take hours).
 
 ==Other functions==
 
